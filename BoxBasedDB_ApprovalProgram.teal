@@ -1,0 +1,185 @@
+// Define constants
+byte "MonsterToken"
+byte "MONTOK"
+txn ApplicationID
+int 0x1
+==
+bnz verify_owner
+
+// Verify transaction sender is the contract owner
+// (based on the first argument passed to the application)
+verify_owner:
+arg 0
+addr TAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5GYPZNUA
+==
+bnz get_monsters_in_box
+
+// Define monster data structure
+txn Fee
+int 1000
+>=
+byte "Monster"
+dup
+byte "Name"
+byte 12
+store
+byte "Attack"
+int 8
+store
+byte "Defense"
+int 8
+store
+byte "HP"
+int 8
+store
+byte "Location"
+int 16
+store
+byte "ASA id"
+int 8
+store
+
+// Define monster array
+byte "Monsters"
+dup
+app_global_put
+
+// Add a new monster
+get_monster_data:
+arg 1
+byte "Name"
+app_arg_get
+arg 2
+byte "Attack"
+app_arg_get
+arg 3
+byte "Defense"
+app_arg_get
+arg 4
+byte "HP"
+app_arg_get
+arg 5
+byte "Location"
+app_arg_get
+int 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+byte "FFFFFFFFFFFF"
+stack  # Create unsigned -1 as 64 bit value
+dup     # Duplicate for each element of tuple
+store   # Store into Tuple
+load    # Load tuple back onto stack
+int 8
+byte "ASA id"
+app_global_get
+itob    # Convert integer to bytes
+app_global_put
+
+// Increment monster count
+int 1
+byte "Monsters"
+app_global_get
+byte "length"
+app_int
++
+byte "Monsters"
+app_global_put
+
+// Mint new ASA token
+int 1
+byte "MonsterToken"
+byte "MONTOK"
+byte "Monsters"
+app_global_get
+int 1
++
+itob
+txn Sender
+asset_send
+
+// Get monsters in the specified box
+get_monsters_in_box:
+arg 6
+int 100
+/
+store
+arg 7
+int 100
+/
+store
+byte "Monsters"
+app_global_get
+byte "length"
+app_int
+store
+int 0
+store
+get_monster_loop:
+dup
+load
+byte "Location"
+app_local_get
+itob
+byte 8
+divmod
+byte "FFFFFFFFFFFF"
+stack 2
+==      # Check box X coordinate
+dup
+load
+byte "Location"
+app_local_get
+itob
+byte 8
+divmod
+byte "FFFFFFFFFFFF"
+stack 1
+==      # Check box Y coordinate
+&&      # Check both coordinates match
+bnz add_monster_to_result
+inc
+byte "Monsters"
+app_global_get
+app_global_get
+<
+bnz get_monster_loop
+load
+int 0
+return
+
+// Add monster to result
+add_monster_to_result:
+load
+dup
+load
+byte "Name"
+app_local_get
+byte "Attack"
+app_local_get
+byte "Defense"
+app_local_get
+byte "HP"
+app_local_get
+byte "Location"
+app_local_get
+byte "ASA id"
+app_global_get
+itob
+byte 8
+divmod
+byte "FFFFFFFFFFFF"
+stack 2
+==      # Extract monster index
+swap
+swap
+swap
+swap
+swap
+dup
+byte "Monsters in box"
+app_local_get
+swap
+store
+inc
+swap
+load
+int 0
+return
